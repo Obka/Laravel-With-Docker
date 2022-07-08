@@ -1,0 +1,68 @@
+version: '3'
+services:
+
+  #PHP Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./code:/var/www
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+  #Nginx Service
+  webserver:
+    image: jwilder/nginx-proxy:alpine
+    ports:
+      - "80:80"
+    container_name: webserver
+    restart: unless-stopped
+    tty: true
+    environment:
+      VIRTUAL_HOST: 'culture.local'
+    volumes:
+      - ./code:/var/www
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+
+  #MySQL Service
+  db:
+    image: mysql:5.7.24
+    container_name: db
+    restart: unless-stopped
+    tty: true
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_ALLOW_EMPTY_PASSWORD: 1
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./db-data:/var/lib/mysql/
+      - ./mysql/my.cnf:/etc/mysql/my.cnf
+  #PHPMYAdmin
+  phpmyadmin:
+    image: 'phpmyadmin/phpmyadmin'
+    restart: unless-stopped
+    environment:
+      VIRTUAL_HOST: 'phpmyadmin.local'
+      MYSQL_ROOT_PASSWORD: 123456
+      PMA_HOST: db
+  #REDIS
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: unless-stopped
+    # volumes:
+    #   - ./db-redis:/data
+#Docker Networks
+networks:
+  default:
+    external:
+      name: nginx-proxy
